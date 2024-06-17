@@ -21,8 +21,10 @@ Parameters for Static Context Header Compression and Fragmentation (SCHC) for ES
   - SCHC MAX_PACKET_SIZE
   - New SCHC Compression / Decompression Actions (CDA)
   - Fragmentation
+  - Integrity Checking (Checksum , Padding)
   - SCHC parameterization for ESP //(ESP Compression & Encrypted ESP Compression)
-  
+
+
 Clear Text ESP Compression / Decompression
 Inner Packet Payload Compression {#sec-payload}
 
