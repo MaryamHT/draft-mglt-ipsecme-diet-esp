@@ -27,6 +27,7 @@ Parameters for Static Context Header Compression and Fragmentation (SCHC) for ES
 
 Clear Text ESP Compression / Decompression
 Inner Packet Payload Compression {#sec-payload}
+Inner IPv6 Compression {#sec-inner-ip6}  
 
 IANA Considerations
 Security Considerations
