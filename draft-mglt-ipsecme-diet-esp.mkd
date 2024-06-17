@@ -1,3 +1,48 @@
+OUTLINE:
+
+abstract
+
+Introduction
+
+Terminology
+
+ESP Architecture
+
+Compression and Decompression in ESP
+  - ESP Header Compression Context
+  
+Parameters for Static Context Header Compression and Fragmentation (SCHC) for ESP Headers
+  - SCHC Context Initialization
+  - SCHC Rules
+  - RuleID
+  - SCHC MAX_PACKET_SIZE
+  - New SCHC Compression / Decompression Actions (CDA)
+  - Fragmentation
+  - SCHC parameterization for ESP //(ESP Compression & Encrypted ESP Compression)
+  
+Clear Text ESP Compression / Decompression
+Inner Packet Payload Compression {#sec-payload}
+
+IANA Considerations
+Security Considerations
+Acknowledgements
+
+Illustrative Example
+
+  - IPv6 in IPv6
+
+  - Json Format
+
+
+
+
+
+
+
+
+
+## Inner IPv6 Compression {#sec-inner-ip6}  
+
 ---
 title: ESP Header Compression Profile
 abbrev: EHCP
@@ -20,7 +65,12 @@ author:
         name: Daniel Migault
         org: Ericsson
         email: daniel.migault@ericsson.com
-      -
+      - &...
+        ins: M. Hatami 
+        name: Maryam Hatami
+        org: Concordia University
+        email: ma_hata@live.concordia.ca
+      - &...
         ins: T. Guggemos
         name: Tobias Guggemos
         org: LMU
@@ -40,7 +90,8 @@ author:
 
 --- abstract
 
-ESP Header Compression Profile (EHCP) defines a profile to compress communications protected with IPsec/ESP.
+ESP Header Compression Profile (EHCP) defines a profile to compress communications protected with IPsec/ESP, focusing on the SCHC (Static Context Header Compression) profile and terminology.
+
 
 --- middle
 
@@ -49,9 +100,28 @@ ESP Header Compression Profile (EHCP) defines a profile to compress communicatio
 
 {::boilerplate bcp14}
 
+
 # Introduction
 
-This document defines a profile to compress IPsec/ESP {{!RFC4301}} / {{!RFC4303}} traffic represented by {{fig-esp}}. 
+This document defines a profile to compress IPsec/ESP {{!RFC4301}} / {{!RFC4303}} using SCHC (RFC 8724) represented by {{fig-esp}} traffic. The main principle is to avoid sending information that has already been shared by the peers. This profile defines two levels of compression: Clear Text ESP Compression (CTEC) and Encrypted ESP Compression (EEC).
+
+
+# Terminology
+
+Clear Text ESP Compression (CTEC): Expressed via the SCHC framework, CTEC compresses all fields that will later be encrypted by ESP.
+
+Encrypted ESP Compression (EEC): Expressed via the SCHC framework, EEC compresses ESP fields which will not be encrypted by ESP.
+
+Encrypted ESP Decompression (EED): The decompression of the inbound packet follows the reverse path
+
+Clear Text ESP Decompression (CTD): The decompression of the inbound packet follows the reverse path
+
+ESP Header Compression (EHC): A method to reduce the size of ESP headers using predefined compression rules and contexts to improve efficiency.
+
+
+# ESP Architecture
+ESP (Encapsulating Security Payload) is a core component of the IPsec suite, providing confidentiality, data integrity, and authentication for IP packets. It works by encapsulating the payload and adding a header, ensuring that the data remains secure during transmission. ESP can operate in two modes: Tunnel mode, where the entire IP packet is encrypted, and Transport mode, where only the payload is encrypted, leaving the original IP header intact. 
+
 
 ~~~
  0                   1                   2                   3
@@ -76,20 +146,25 @@ This document defines a profile to compress IPsec/ESP {{!RFC4301}} / {{!RFC4303}
 ~~~
 {: #fig-esp artwork-align="center" title="Top-Level Format of an ESP Packet"}
 
-The main  principle is to avoid sending information that has already been shared by the peers. 
-As depicted in {{fig-arch}}, this profiles defines two levels of compression.
-The first level is the Clear Text ESP Compression (CTE C)  compresses all fields that will later be encrypted by ESP - that is the Payload Data, the Padding, the  Pad Length and the Next Header. 
-The second is the Encrypted ESP Compression (EE C) compresses ESP remaining fields that is the Security Parameters Index (SPI) and  Sequence Number (SN). 
 
-The decompression of the inbound packet follows the reverse path the Encrypted ESP Decompression (EE D) decompressed the unencrypted ESP header fields while the Clear Text ESP Decompression (CT D) is performed once the ESP packet is decrypted. 
+# Compression and Decompression in ESP
+
+The main  principle is to avoid sending information that has already been shared by the peers. Different profiles and technologies, such as those defined by {{!RFC4301}} and {{!RFC4303}}, ensure that ESP can be tailored to various network requirements and security policies. The SCHC (Static Context Header Compression) profile for ESP aims to optimize ESP header sizes by leveraging predefined contexts and compression rules, improving efficiency in constrained environments.
+
+The SCHC rules are derived from the ESP Compression Header Context, which includes the ESP packet parameters. It is expected that all necessary arguments are agreed via IKEv2 {{?I-D.mglt-ipsecme-ikev2-diet-esp-extension}}. As depicted in {{fig-arch}}, this profiles defines two levels of compression.
+
+ Clear Text ESP Compression (CTEC): Compresses fields that will later be encrypted by ESP, such as the payload data, padding, pad length, and next header.
+
+ Encrypted ESP Compression (EEC): Compresses the remaining ESP fields, including the SPI and sequence number.
+
+The decompression of the inbound packet follows a reverse process. First, the Encrypted ESP Decompression (EE D) decompresses the encrypted ESP header fields. After the ESP packet is decrypted, the Clear Text ESP Decompression (CT D) decompresses the Clear Text fields of ESP packet.
 
 Note that implementation MAY differ from the architectural description but it is assumed the outputs will be the same. 
 
 The CTE C/D and EE C/D are expressed via the Generic Framework for Static Context Header (SCHC) {{!RFC8724}}.
 The SCHC rules are derived from the ESP Compression Header Context which includes the Security Association (SA) as well as an additional parameters.
 This is the main content of this document. 
- 
-It is expected that all necessary arguments are agreed via IKEv2 {{?I-D.mglt-ipsecme-ikev2-diet-esp-extension}}.
+
 
 In some case, additional compression may occur on the inner IP packet before being processed by IPsec/ESP as well as over the Outer IP packet.
 Such compression, decompression are outside the scope of this document.    
@@ -116,8 +191,9 @@ Such compression, decompression are outside the scope of this document.
 {: #fig-arch artwork-align="center" title="ESP Compression Architecture"}
 
 
-# ESP Header Compression Context 
-
+# Parameters for Static Context Header Compression and Fragmentation (SCHC) for ESP Headers
+  
+If ESP incorporates SCHC, it is recommended that these scenarios use the SCHC header compression {{!RFC8724}} capability to optimize the data transmission.
 The EHC Context provides the necessary information to generate the SCHC Rules.
 Most pieces of information are already available from the negotiated SA {{!RFC4301}}.
 Other pieces of information needs to be specifically configured or agreed via other mechanisms like for example {{?I-D.mglt-ipsecme-ikev2-diet-esp-extension}}.  
@@ -130,10 +206,27 @@ Note that additional Compression might be performed especially on the inner IP p
 However, this profiles limits the scope of the compression to UDP packets as well as the inner IP header.
 We believe that is a reasonable scope for ESP to address both IoT UDP packets as well as large VPN traffic.
 If further compression are needed, this should be achieved by sending an IP packet with an SCHC payload where the expected compression is achieved outside ESP. 
-  
+
+## SCHC Context Initialization
+SCHC Context Initialization involves setting up the initial parameters and values that will be used for compressing and decompressing ESP headers. This includes defining the static context, which contains all the rules and parameters necessary for the SCHC operations. The context is shared between the sender and receiver to ensure consistent compression and decompression processes. Initialization ensures that both ends have a common understanding of the fields, their possible values, and how to handle them during communication.
+
+## SCHC Rules
+SCHC Rules are predefined sets of instructions that specify how to compress and decompress the header fields of an ESP packet. Each rule is designed to handle specific patterns and variations in the header fields, allowing for efficient compression by eliminating redundancy and leveraging the static context. Rules are identified by RuleIDs and are crucial for mapping the fields correctly during the compression and decompression processes.
+
+## Rule ID
+The RuleID is a unique identifier for each SCHC rule, included in packets to ensure the receiver applies the correct decompression rule, maintaining consistency in packet processing.
+
+##SCHC MAX_PACKET_SIZE
+SCHC MAX_PACKET_SIZE defines the largest size of a compressed ESP packet that can be handled. It ensures packets fit within network limits, optimizing transmission and avoiding unnecessary fragmentation. ??????????????????????????????(How much is it)??????????????????????????????????????
+
+##Fragmentation
+No fragmentation is applied in this profile
+
 The following attributes are considered by this EHC Context.
 Implementations may consider different expression of the parameters but their behavior is expected to remain compatible with this specification. 
 
+
+SCHC Context parameterization:
 ~~~
 +===================+==========================+===========+=======+
 | EHC Context       | Possible Values          | Reference | C / D |
@@ -865,6 +958,126 @@ P|     Padding (continue)        |  Pad Length   | Next Header   |V V
 ###  IPv4 in IPv6
 
 TBD
+
+
+
+
+
+
+
+#Json Format
+
+"SCHC_Context": {
+    "Rules": [
+      {
+        "RuleID": 1,
+        "Description": "Clear Text ESP Compression",
+        "Fields": [
+          {
+            "FieldID": "Payload Data",
+            "FL": "variable",
+            "FP": 1,
+            "DI": "Up",
+            "TV": null,
+            "MO": "ignore",
+            "CDA": "not-sent"
+          },
+          {
+            "FieldID": "Padding",
+            "FL": "variable",
+            "FP": 2,
+            "DI": "Up",
+            "TV": null,
+            "MO": "ignore",
+            "CDA": "padding"
+          },
+          {
+            "FieldID": "Pad Length",
+            "FL": 8,
+            "FP": 3,
+            "DI": "Up",
+            "TV": null,
+            "MO": "ignore",
+            "CDA": "value-sent"
+          },
+          {
+            "FieldID": "Next Header",
+            "FL": 8,
+            "FP": 4,
+            "DI": "Up",
+            "TV": null,
+            "MO": "ignore",
+            "CDA": "value-sent"
+          }
+        ]
+      },
+      {
+        "RuleID": 2,
+        "Description": "Encrypted ESP Compression",
+        "Fields": [
+          {
+            "FieldID": "SPI",
+            "FL": 32,
+            "FP": 1,
+            "DI": "Up",
+            "TV": null,
+            "MO": "MSB(4 - esp_spi_lsb)",
+            "CDA": "LSB"
+          },
+          {
+            "FieldID": "Sequence Number",
+            "FL": 32,
+            "FP": 2,
+            "DI": "Up",
+            "TV": null,
+            "MO": "MSB(4 - esp_sn_lsb)",
+            "CDA": "LSB"
+          }
+        ]
+      },
+      {
+        "RuleID": 3,
+        "Description": "Clear Text ESP Decompression",
+        "Fields": [
+          {
+            "FieldID": "Payload Data",
+            "FL": "variable",
+            "FP": 1,
+            "DI": "Down",
+            "TV": null,
+            "MO": "ignore",
+            "CDA": "not-sent"
+          },
+          {
+            "FieldID": "Padding",
+            "FL": "variable",
+            "FP": 2,
+            "DI": "Down",
+            "TV": null,
+            "MO": "ignore",
+            "CDA": "padding"
+          },
+          {
+            "FieldID": "Pad Length",
+            "FL": 8,
+            "FP": 3,
+            "DI": "Down",
+            "TV": null,
+            "MO": "ignore",
+            "CDA": "value-sent"
+          },
+          {
+            "FieldID": "Next Header",
+            "FL": 8,
+            "FP": 4,
+            "DI": "Down",
+            "TV": null,
+            "MO": "ignore",
+            "CDA": "value-sent"
+          }
+        ]
+      }
+
 
 
 
