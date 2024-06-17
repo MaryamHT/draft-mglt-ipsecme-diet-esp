@@ -50,10 +50,6 @@ Illustrative Example
 ----------------------------------------------------------------------------------------------------------
 
 
-
-
-## Inner IPv6 Compression {#sec-inner-ip6}  
-
 ---
 title: ESP Header Compression Profile
 abbrev: EHCP
