@@ -72,12 +72,7 @@ author:
         name: Daniel Migault
         org: Ericsson
         email: daniel.migault@ericsson.com
-      - &...
-        ins: M. Hatami 
-        name: Maryam Hatami
-        org: Concordia University
-        email: ma_hata@live.concordia.ca
-      - &...
+
         ins: T. Guggemos
         name: Tobias Guggemos
         org: LMU
@@ -110,8 +105,12 @@ ESP Header Compression Profile (EHCP) defines a profile to compress communicatio
 
 # Introduction
 
-This document defines a profile to compress IPsec/ESP {{!RFC4301}} / {{!RFC4303}} using SCHC (RFC 8724) represented by {{fig-esp}} traffic. The main principle is to avoid sending information that has already been shared by the peers. This profile defines two levels of compression: Clear Text ESP Compression (CTEC) and Encrypted ESP Compression (EEC).
+This document defines a profile to compress IPsec/ESP {{!RFC4301}} / {{!RFC4303}} using SCHC (RFC 8724) represented by {{fig-esp}} traffic. The main principle is to avoid sending information that has already been shared by the peers. This profile defines three levels of compression:
 
+1. Pre-IPsec Compression (PIC), which occurs before the UDP packet or any other IP packet reaches the IPsec stack, compressing fields such as UDP ports and checksum at this stage.
+2. Clear Text ESP Compression (CTEC), which compresses fields that will later be encrypted by ESP.
+3. Encrypted ESP Compression (EEC), which compresses ESP fields that remain after encryption.
+Note that potentially, the UDP packet could be compressed within the Clear Text ESP, but this would vary depending on whether IPsec is used in Transport mode or Tunnel mode. Thus, it is simpler to perform this compression before IPsec. Furthermore, while the current compression scope does not extend beyond the transport layer (i.e., UDP), there will eventually be a need to compress the application layer as well to cover all compression layers.
 
 # Terminology
 
@@ -121,14 +120,25 @@ Encrypted ESP Compression (EEC): Expressed via the SCHC framework, EEC compresse
 
 Encrypted ESP Decompression (EED): The decompression of the inbound packet follows the reverse path
 
-Clear Text ESP Decompression (CTD): The decompression of the inbound packet follows the reverse path
+Clear Text ESP Decompression (CTED): The decompression of the inbound packet follows the reverse path
+
 
 ESP Header Compression (EHC): A method to reduce the size of ESP headers using predefined compression rules and contexts to improve efficiency.
 
 
 # ESP Architecture
-ESP (Encapsulating Security Payload) is a core component of the IPsec suite, providing confidentiality, data integrity, and authentication for IP packets. It works by encapsulating the payload and adding a header, ensuring that the data remains secure during transmission. ESP can operate in two modes: Tunnel mode, where the entire IP packet is encrypted, and Transport mode, where only the payload is encrypted, leaving the original IP header intact. 
+This section provides an informative description of Encapsulating Security Payload (ESP) {{!RFC4303}}, which is part of the IPsec protocol suite {{!RFC4301}}.
 
+   As per {{!RFC4303}}, ESP can be used to provide confidentiality, data origin
+   authentication, connectionless integrity, an anti-replay service (a
+   form of partial sequence integrity), and (limited) traffic flow
+   confidentiality.  The set of services provided depends on options
+   selected at the time of Security Association (SA) establishment and
+   on the location of the implementation in a network topology.
+   
+To ease the reading of the document, Figure {{fig-esp}} represents an ESP packet. ESP has two distinct modes: Tunnel mode and Transport mode. Tunnel mode is commonly used for VPNs. The Payload Data is an IP packet, and the ESP packet is placed right after the outer IP header. In Transport mode, the Payload Data is constituted by the IP Payload and optionally some IP header extensions. The ESP packet is placed right after the IP header and optionally some IP header extensions.
+
+To better understand ESP, the reader might also be interested in reading Minimal ESP {{?RFC933}}, a simplified version of ESP.
 
 ~~~
  0                   1                   2                   3
@@ -156,24 +166,23 @@ ESP (Encapsulating Security Payload) is a core component of the IPsec suite, pro
 
 # Compression and Decompression in ESP
 
-The main  principle is to avoid sending information that has already been shared by the peers. Different profiles and technologies, such as those defined by {{!RFC4301}} and {{!RFC4303}}, ensure that ESP can be tailored to various network requirements and security policies. The SCHC (Static Context Header Compression) profile for ESP aims to optimize ESP header sizes by leveraging predefined contexts and compression rules, improving efficiency in constrained environments.
+The main principle of the ESP Header Compression Profile (EHCP) is to avoid sending information that has already been shared by the peers. Different profiles and technologies, such as those defined by {{!RFC4301}} and {{!RFC4303}}, ensure that ESP can be tailored to various network requirements and security policies. However, ESP is not optimized for bandwidth efficiency because it has been designed as a general-purpose protocol. The EHCP aims to address this by leveraging the SCHC (Static Context Header Compression) profile to optimize the ESP header sizes for better efficiency in constrained environments.
 
-The SCHC rules are derived from the ESP Compression Header Context, which includes the ESP packet parameters. It is expected that all necessary arguments are agreed via IKEv2 {{?I-D.mglt-ipsecme-ikev2-diet-esp-extension}}. As depicted in {{fig-arch}}, this profiles defines two levels of compression.
+The EHCP leverages the SCHC profiles to compress various ESP fields. The profiles are derived from parameters associated with the Security Association (SA) and agreed upon via IKEv2 {{!RFC7296}}, as well as specific compression parameters defined in IKEv2 {{?I-D.mglt-ipsecme-ikev2-diet-esp-extension}}. As depicted in {{fig-arch}}, this profile defines three levels of compression:
 
- Clear Text ESP Compression (CTEC): Compresses fields that will later be encrypted by ESP, such as the payload data, padding, pad length, and next header.
+1. Pre-IPsec Compression (PIC): Compresses fields before the UDP packet or any other IP packet reaches the IPsec stack, such as UDP ports and checksum.
+2. Clear Text ESP Compression (CTEC): Compresses fields that will later be encrypted by ESP.
+3. Encrypted ESP Compression (EEC): Compresses ESP fields that remain after encryption.
+Note that potentially, the UDP packet could be compressed within the Clear Text ESP, but this would vary depending on whether IPsec is used in Transport mode or Tunnel mode. Thus, it is simpler to perform this compression before IPsec. Furthermore, while the current compression scope does not extend beyond the transport layer (i.e., UDP), there will eventually be a need to compress the application layer as well.
 
- Encrypted ESP Compression (EEC): Compresses the remaining ESP fields, including the SPI and sequence number.
+The decompression of the inbound packet follows a reverse process. First, the Encrypted ESP Decompression (EED) decompresses the encrypted ESP header fields. After the ESP packet is decrypted, the Clear Text ESP Decompression (CTD) decompresses the Clear Text fields of the ESP packet.
 
-The decompression of the inbound packet follows a reverse process. First, the Encrypted ESP Decompression (EE D) decompresses the encrypted ESP header fields. After the ESP packet is decrypted, the Clear Text ESP Decompression (CT D) decompresses the Clear Text fields of ESP packet.
+Note that implementation MAY differ from the architectural description but it is assumed the outputs will be the same.
 
-Note that implementation MAY differ from the architectural description but it is assumed the outputs will be the same. 
+The CTE C/D and EE C/D are expressed via the Generic Framework for Static Context Header Compression (SCHC) {{!RFC8724}}. The SCHC rules are derived from the ESP Compression Header Context, which includes the Security Association (SA) as well as additional parameters.
 
-The CTE C/D and EE C/D are expressed via the Generic Framework for Static Context Header (SCHC) {{!RFC8724}}.
-The SCHC rules are derived from the ESP Compression Header Context which includes the Security Association (SA) as well as an additional parameters.
-This is the main content of this document. 
-
-
-In some case, additional compression may occur on the inner IP packet before being processed by IPsec/ESP as well as over the Outer IP packet.
+In some cases, additional compression may occur on the inner IP packet before being processed by IPsec/ESP as well as over the outer IP packet. The inner IP packet may be compressed with SCHC beyond the capabilities proposed by EHCP. The ability to further compress the transport layer (UDP, TCP) or the application layer is out of scope of this document.
+  
 Such compression, decompression are outside the scope of this document.    
  
 ~~~
@@ -970,9 +979,41 @@ TBD
 
 
 
+# Json Format
+
+The JSON file defines a set of rules within the SCHC_Context that are used for compressing and decompressing ESP headers. Each rule has a RuleID, a Description, and a set of Fields. Each field specifies how a particular part of the packet should be handled during compression or decompression.
+
+Rule 1: Clear Text ESP Compression
+Rule 1 compresses the fields of the ESP packet before encryption. The Payload Data field, which is variable in length, is not sent during compression (CDA: "not-sent"). This means that the data payload itself is excluded from the compressed packet and will be handled separately. The Padding field, also variable in length, is computed during decompression to meet alignment requirements (CDA: "padding"). The Pad Length field is an 8-bit field indicating the length of the padding, and it is sent as-is (CDA: "value-sent"). The Next Header field, which indicates the type of the next protocol header, is also an 8-bit field sent without modification (CDA: "value-sent").
+
+Rule 2: Encrypted ESP Compression
+Rule 2 focuses on compressing fields of the ESP packet after encryption. The SPI (Security Parameters Index) is a 32-bit field that is compressed using the Most Significant Bits (MSB) technique based on the number of least significant bytes to be considered (MO: "MSB(4 - esp_spi_lsb)", CDA: "LSB"). Similarly, the Sequence Number, another 32-bit field, is compressed using the MSB technique, reducing its size by only sending the least significant bits as defined in the context (MO: "MSB(4 - esp_sn_lsb)", CDA: "LSB"). This rule ensures that only the necessary parts of these large fields are transmitted, reducing the overall packet size.
+
+Rule 3: Clear Text ESP Decompression
+Rule 3 handles the decompression of the clear text fields of the ESP packet after decryption. The Payload Data field, which is variable in length and was not sent during compression, is restored in its original form (CDA: "not-sent"). The Padding field, also variable, is recalculated to ensure correct alignment as per the network requirements (CDA: "padding"). The Pad Length field, an 8-bit indicator of padding length, is received as-is (CDA: "value-sent"). Similarly, the Next Header field, which specifies the next protocol header, is decompressed directly from the received value (CDA: "value-sent"). This rule ensures that the original structure of the ESP packet is accurately reconstructed.
+
+Rule 4: Inner Packet Compression
+Rule 4 is responsible for compressing the IP source and destination addresses of the inner packet. The IP Source field is compressed using the MSB technique, where only the most significant bits that change are sent (MO: "MSB", CDA: "LSB"). This reduces the amount of data transmitted by leveraging the static context of the IP addresses. Similarly, the IP Destination field is compressed using the same MSB technique, ensuring efficient compression of the IP addresses (MO: "MSB", CDA: "LSB"). By focusing on the most significant bits, this rule minimizes the data needed to represent the IP addresses.
+
+Rule 5: Inner Packet Decompression
+Rule 5 decompresses the IP source and destination addresses of the inner packet. The IP Source field, which was compressed using the MSB technique, is decompressed by reconstructing the full address from the received least significant bits (MO: "MSB", CDA: "LSB"). The same process applies to the IP Destination field, where the original address is reconstructed from the compressed data (MO: "MSB", CDA: "LSB"). This rule ensures that the IP addresses in the inner packet are accurately restored to their original form, maintaining the integrity of the packet structure.
 
 
-#Json Format
+## Detailed Field Explanation
+Each field in the rules has the following properties:
+
+- FieldID: The identifier of the field.
+- FL: Field length, which can be fixed (e.g., 8, 32 bits) or variable.
+- FP: Field position in the packet.
+- DI: Direction indicator (Up for outbound, Down for inbound).
+- TV: Target value, used for matching during compression/decompression.
+- MO: Matching operator, which specifies how to match the field (ignore, MSB, etc.).
+- CDA: Compression/Decompression action, which defines what to do with the field (e.g., not-sent, padding, value-sent, LSB).
+
+
+## Special Considerations
+Alignment: Ensures that the length of the compressed data plus padding aligns correctly according to network requirements.
+Padding and Pad Length: Handled dynamically based on alignment and the length of the payload data.
 
 "SCHC_Context": {
     "Rules": [
@@ -1083,7 +1124,57 @@ TBD
             "CDA": "value-sent"
           }
         ]
+      },
+      {
+        "RuleID": 4,
+        "Description": "Inner Packet Compression",
+        "Fields": [
+          {
+            "FieldID": "IP Source",
+            "FL": "variable",
+            "FP": 1,
+            "DI": "Up",
+            "TV": "msb(ip_src)",
+            "MO": "MSB",
+            "CDA": "LSB"
+          },
+          {
+            "FieldID": "IP Destination",
+            "FL": "variable",
+            "FP": 2,
+            "DI": "Up",
+            "TV": "msb(ip_dst)",
+            "MO": "MSB",
+            "CDA": "LSB"
+          }
+        ]
+      },
+      {
+        "RuleID": 5,
+        "Description": "Inner Packet Decompression",
+        "Fields": [
+          {
+            "FieldID": "IP Source",
+            "FL": "variable",
+            "FP": 1,
+            "DI": "Down",
+            "TV": "msb(ip_src)",
+            "MO": "MSB",
+            "CDA": "LSB"
+          },
+          {
+            "FieldID": "IP Destination",
+            "FL": "variable",
+            "FP": 2,
+            "DI": "Down",
+            "TV": "msb(ip_dst)",
+            "MO": "MSB",
+            "CDA": "LSB"
+          }
+        ]
       }
+    ]
+  }
 
 
 
@@ -1092,6 +1183,4 @@ TBD
 
 
 
-
-
-
+s
