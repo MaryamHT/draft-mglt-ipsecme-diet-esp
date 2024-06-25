@@ -21,11 +21,11 @@ Parameters for Static Context Header Compression and Fragmentation (SCHC) for ES
   - SCHC MAX_PACKET_SIZE
   - New SCHC Compression / Decompression Actions (CDA)
   - Fragmentation
-  - Integrity Checking (Checksum , Padding)
   - SCHC parameterization for ESP //(ESP Compression & Encrypted ESP Compression)
 
 
 Clear Text ESP Compression / Decompression
+- Integrity Checking (Checksum , Padding)
 
 Inner Packet Payload Compression {#sec-payload}
 
@@ -233,7 +233,12 @@ SCHC Rules are predefined sets of instructions that specify how to compress and 
 The RuleID is a unique identifier for each SCHC rule, included in packets to ensure the receiver applies the correct decompression rule, maintaining consistency in packet processing.
 
 ##SCHC MAX_PACKET_SIZE
-SCHC MAX_PACKET_SIZE defines the largest size of a compressed ESP packet that can be handled. It ensures packets fit within network limits, optimizing transmission and avoiding unnecessary fragmentation.
+SCHC MAX_PACKET_SIZE defines the largest size of a compressed ESP packet that can be handled. It ensures packets fit within network limits, optimizing transmission and avoiding unnecessary fragmentation. <htm> (how much is it)? </htm>
+
+##Integrity Checking
+
+##SCHC parameterization for ESP //(ESP Compression & Encrypted ESP Compression)
+
 ##Fragmentation
 No fragmentation is applied in this profile
 
@@ -1165,7 +1170,7 @@ Padding and Pad Length: Handled dynamically based on alignment and the length of
           {
             "FieldID": "IP Destination",
             "FL": "variable",
-            "FP": 2,x 
+            "FP": 2,
             "DI": "Down",
             "TV": "msb(ip_dst)",
             "MO": "MSB",
