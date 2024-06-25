@@ -233,8 +233,7 @@ SCHC Rules are predefined sets of instructions that specify how to compress and 
 The RuleID is a unique identifier for each SCHC rule, included in packets to ensure the receiver applies the correct decompression rule, maintaining consistency in packet processing.
 
 ##SCHC MAX_PACKET_SIZE
-SCHC MAX_PACKET_SIZE defines the largest size of a compressed ESP packet that can be handled. It ensures packets fit within network limits, optimizing transmission and avoiding unnecessary fragmentation. ??????????????????????????????(How much is it)??????????????????????????????????????
-
+SCHC MAX_PACKET_SIZE defines the largest size of a compressed ESP packet that can be handled. It ensures packets fit within network limits, optimizing transmission and avoiding unnecessary fragmentation.
 ##Fragmentation
 No fragmentation is applied in this profile
 
@@ -1166,7 +1165,7 @@ Padding and Pad Length: Handled dynamically based on alignment and the length of
           {
             "FieldID": "IP Destination",
             "FL": "variable",
-            "FP": 2,
+            "FP": 2,x 
             "DI": "Down",
             "TV": "msb(ip_dst)",
             "MO": "MSB",
