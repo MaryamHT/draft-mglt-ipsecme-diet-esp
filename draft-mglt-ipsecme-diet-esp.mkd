@@ -979,7 +979,7 @@ TBD
 
 
 
-# Json Format
+# SCHC Context
 
 The JSON file defines a set of rules within the SCHC_Context that are used for compressing and decompressing ESP headers. Each rule has a RuleID, a Description, and a set of Fields. Each field specifies how a particular part of the packet should be handled during compression or decompression.
 
@@ -1015,6 +1015,7 @@ Each field in the rules has the following properties:
 Alignment: Ensures that the length of the compressed data plus padding aligns correctly according to network requirements.
 Padding and Pad Length: Handled dynamically based on alignment and the length of the payload data.
 
+## JSON Format Context
 "SCHC_Context": {
     "Rules": [
       {
@@ -1183,4 +1184,3 @@ Padding and Pad Length: Handled dynamically based on alignment and the length of
 
 
 
-s
