@@ -257,7 +257,7 @@ Device                                                                          
                                      L2, RID, C {IP, EH, IP, UDP}                           
 
 ~~~
-{: #fig-int artwork-align="center" title=""}
+{: #fig-int artwork-align="center" title="SCHC Integration into the IPsec Stack"}
 
 Diagram key concepts:
 
