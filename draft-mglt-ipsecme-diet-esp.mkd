@@ -12,7 +12,9 @@ ESP Architecture
 
 Compression and Decompression in ESP
   - ESP Header Compression Context
-  
+
+SCHC Integration into the IPsec Stack
+
 Parameters for Static Context Header Compression and Fragmentation (SCHC) for ESP Headers
   - SCHC Context Initialization
   - SCHC Rules
@@ -186,6 +188,7 @@ The EHCP leverages the SCHC profiles to compress various ESP fields. The profile
 - Pre-IPsec Compression (PIC): Compresses fields before the UDP packet or any other IP packet reaches the IPsec stack, such as UDP ports and checksum.
 - Clear Text ESP Compression (CTEC): Compresses fields that will later be encrypted by ESP.
 - Encrypted ESP Compression (EEC): Compresses ESP fields that remain after encryption.
+
 Note that potentially, the UDP packet could be compressed within the Clear Text ESP, but this would vary depending on whether IPsec is used in Transport mode or Tunnel mode. Thus, it is simpler to perform this compression before IPsec. Furthermore, while the current compression scope does not extend beyond the transport layer (i.e., UDP), there will eventually be a need to compress the application layer as well.
 
 The decompression of the inbound packet follows a reverse process. First, the Encrypted ESP Decompression (EED) decompresses the encrypted ESP header fields. After the ESP packet is decrypted, the Clear Text ESP Decompression (CTD) decompresses the Clear Text fields of the ESP packet.
@@ -218,6 +221,50 @@ Such compression, decompression are outside the scope of this document.
 
 ~~~
 {: #fig-arch artwork-align="center" title="ESP Compression Architecture"}
+
+
+# SCHC Integration into the IPsec Stack
+
+SCHC integration into the IPsec stack involves SCHC processing in two phases to allow compression of encrypted traffic. The diagram {{fig-int}} illustrates the integration of SCHC (Static Context Header Compression) into the IPsec stack, detailing the different phases and components involved in the compression and decompression processes. The diagram is divided into two main sections: the Device side and the Endpoint side, representing the two ends of a communication link.
+
+~~~
+Device                                                                                  Endpoint
++----------------+                                                                   +----------------+
+| UDP            |                                                                   | UDP            |
++----------------+                                                                   +----------------+
+| IPv6           |                                                                   | IPv6           |
++----------------+                                                                   +----------------+
++................+                                                                   +................+
+| SCHC           |+------------------------------PIC phase--------------------------+| SCHC           |
++................+                             C {IP, UDP}                           +................+
++----------------+                                                                   +----------------+
+| ESP            |                                                                   | ESP            |
+| (encapsulation)|                                                                   | (unwrapping)   |
++----------------+                                                                   +----------------+
+| SCHC           |+-----------------------------CTEC phase--------------------------+| SCHC           |
++----------------+                       EHC, C {IP, UDP, ESPT}                      +----------------+
+| ESP            |                                                                   | ESP            |
+| (encryption)   |                                                                   | (decryption)   |
++----------------+                                                                   +----------------+
+| IPv6           |                                                                   | IPv6           |
++----------------+                                                                   +----------------+
+| SCHC           |+------------------------------EEC phase--------------------------+| SCHC           |
++----------------+                         C {IP, EH, IP, UDP}                       +----------------+
+|  L2            |                                                                   |  L2            |
++----------------+                                                                   +----------------+
+        |                                                                                   |
+        +-------------------------------------communication---------------------------------+
+                                     L2, RID, C {IP, EH, IP, UDP}                           
+
+~~~
+{: #fig-int artwork-align="center" title=""}
+
+Diagram key concepts:
+
+- The dotted SCHC layer indicate that this layer is beyond the capabilities proposed by EHCP.
+- C is for Compressed headers for the fields inside.
+- L2, RID, C {IP, EH, IP, UDP} shows the complete compressed packet with Layer 2, Rule ID, and compressed headers for IP, ESP Header, IP, and UDP.
+
 
 
 # Parameters for Static Context Header Compression and Fragmentation (SCHC) for ESP Headers
@@ -885,6 +932,42 @@ Alignment: Ensures that the length of the compressed data plus padding aligns co
 Padding and Pad Length: Handled dynamically based on alignment and the length of the payload data.
 
 ## JSON Format Context
+
+For Rule 1, ignoring PadLen and Padding is an optimal choice when possible, but it is not always feasible as IPv6 typically requires ESP to have a 32-bit alignment. The alignment is determined by the network's requirements. We have:
+
+
+len(Payload Data) + len(Padding) + len(Pad Length) + len(Next Header) = 0 mod ALIGN
+
+
+- `len(Next Header) = 1` or `0` if compressed. It can be compressed if the type of inner packet is known. For example, in Tunnel mode, the IP range determines if it is an IPv6 or IPv4 packet. In Transport mode, the upper layer protocol type (TCP or UDP) determines this.
+- Payload Data has been compressed by IIPC.
+- `len(Padding) = Pad Length`
+
+If alignment is set to 8 bits:
+
+
+len(Padding) = Pad Length = 0
+len(Pad Length) = 0
+
+
+Otherwise:
+- If Compressed Payload Data has a fixed size:
+
+
+len(Pad Length) = 0
+len(Padding) = Pad Length = ALIGN - len(Payload Data) - len(Next Header) mod ALIGN
+
+
+- Otherwise:
+
+
+len(Pad Length) = 1
+len(Padding) = Pad Length = ALIGN - len(Payload Data) - 1 - len(Next Header) mod ALIGN
+
+
+Overall, this means that the SCHC_Context is dynamically generated from the EHCP Context. Additionally, a rule is required to compress the inner packet. IP source and IP destination should be compressed using LSB.
+
+
 
 ```json
 {
