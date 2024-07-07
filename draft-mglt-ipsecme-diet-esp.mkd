@@ -114,29 +114,29 @@ Note that potentially, the UDP packet could be compressed within the Clear Text 
 
 # Terminology
 
-Clear Text ESP Compression (CTEC): Expressed via the SCHC framework, CTEC compresses all fields that will later be encrypted by ESP.
+__Clear Text ESP Compression (CTEC):__ Expressed via the SCHC framework, CTEC compresses all fields that will later be encrypted by ESP.
 
-Encrypted ESP Compression (EEC): Expressed via the SCHC framework, EEC compresses ESP fields which will not be encrypted by ESP.
+__Encrypted ESP Compression (EEC):__ Expressed via the SCHC framework, EEC compresses ESP fields which will not be encrypted by ESP.
 
-Encrypted ESP Decompression (EED): The decompression of the inbound packet follows the reverse path
+__Encrypted ESP Decompression (EED):__ The decompression of the inbound packet follows the reverse path
 
-Clear Text ESP Decompression (CTED): The decompression of the inbound packet follows the reverse path
+__Clear Text ESP Decompression (CTED):__ The decompression of the inbound packet follows the reverse path
 
-ESP Header Compression (EHC): A method to reduce the size of ESP headers using predefined compression rules and contexts to improve efficiency.
+__ESP Header Compression (EHC):__ A method to reduce the size of ESP headers using predefined compression rules and contexts to improve efficiency.
 
-Security Parameters Index (SPI): As defined in {{!RFC 4301}}, Section 4.1.
+__Security Parameters Index (SPI):__ As defined in {{!RFC 4301}}, Section 4.1.
 
-Sequence Number (SN): As defined in {{!RFC 4303}}, Section 2.2.
+__Sequence Number (SN):__ As defined in {{!RFC 4303}}, Section 2.2.
 
-Integrity Check Value (ICV): As defined in {{!RFC 4303}}, Section 2.7.
+__Integrity Check Value (ICV):__ As defined in {{!RFC 4303}}, Section 2.7.
 
-Static Context Header Compression (SCHC): A framework for header compression designed for LPWANs, as defined in {{!RFC 8724}}.
+__Static Context Header Compression (SCHC):__ A framework for header compression designed for LPWANs, as defined in {{!RFC 8724}}.
 
-Static Context Header Compression Rules (SCHC Rules): As defined in {{!RFC 8724}}, Section 5.
+__Static Context Header Compression Rules (SCHC Rules):__ As defined in {{!RFC 8724}}, Section 5.
 
-RuleID: A unique identifier for each SCHC rule, as defined in {{!RFC 8724}}, Section 5.1.
+__RuleID:__ A unique identifier for each SCHC rule, as defined in {{!RFC 8724}}, Section 5.1.
 
-SCHC Context: The set of parameters and rules shared between communicating entities, as defined in {{!RFC 8724}}, Section 5.3.
+__SCHC Context:__ The set of parameters and rules shared between communicating entities, as defined in {{!RFC 8724}}, Section 5.3.
 
 
 
