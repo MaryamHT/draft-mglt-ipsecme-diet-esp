@@ -170,9 +170,9 @@ The main principle of the ESP Header Compression Profile (EHCP) is to avoid send
 
 The EHCP leverages the SCHC profiles to compress various ESP fields. The profiles are derived from parameters associated with the Security Association (SA) and agreed upon via IKEv2 {{!RFC7296}}, as well as specific compression parameters defined in IKEv2 {{?I-D.mglt-ipsecme-ikev2-diet-esp-extension}}. As depicted in {{fig-arch}}, this profile defines three levels of compression:
 
-1. Pre-IPsec Compression (PIC): Compresses fields before the UDP packet or any other IP packet reaches the IPsec stack, such as UDP ports and checksum.
-2. Clear Text ESP Compression (CTEC): Compresses fields that will later be encrypted by ESP.
-3. Encrypted ESP Compression (EEC): Compresses ESP fields that remain after encryption.
+- Pre-IPsec Compression (PIC): Compresses fields before the UDP packet or any other IP packet reaches the IPsec stack, such as UDP ports and checksum.
+- Clear Text ESP Compression (CTEC): Compresses fields that will later be encrypted by ESP.
+- Encrypted ESP Compression (EEC): Compresses ESP fields that remain after encryption.
 Note that potentially, the UDP packet could be compressed within the Clear Text ESP, but this would vary depending on whether IPsec is used in Transport mode or Tunnel mode. Thus, it is simpler to perform this compression before IPsec. Furthermore, while the current compression scope does not extend beyond the transport layer (i.e., UDP), there will eventually be a need to compress the application layer as well.
 
 The decompression of the inbound packet follows a reverse process. First, the Encrypted ESP Decompression (EED) decompresses the encrypted ESP header fields. After the ESP packet is decrypted, the Clear Text ESP Decompression (CTD) decompresses the Clear Text fields of the ESP packet.
