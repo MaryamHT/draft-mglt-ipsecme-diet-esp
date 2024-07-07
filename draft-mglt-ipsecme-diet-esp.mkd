@@ -122,8 +122,22 @@ Encrypted ESP Decompression (EED): The decompression of the inbound packet follo
 
 Clear Text ESP Decompression (CTED): The decompression of the inbound packet follows the reverse path
 
-
 ESP Header Compression (EHC): A method to reduce the size of ESP headers using predefined compression rules and contexts to improve efficiency.
+
+Security Parameters Index (SPI): As defined in {{!RFC 4301}}, Section 4.1.
+
+Sequence Number (SN): As defined in {{!RFC 4303}}, Section 2.2.
+
+Integrity Check Value (ICV): As defined in {{!RFC 4303}}, Section 2.7.
+
+Static Context Header Compression (SCHC): A framework for header compression designed for LPWANs, as defined in {{!RFC 8724}}.
+
+Static Context Header Compression Rules (SCHC Rules): As defined in {{!RFC 8724}}, Section 5.
+
+RuleID: A unique identifier for each SCHC rule, as defined in {{!RFC 8724}}, Section 5.1.
+
+SCHC Context: The set of parameters and rules shared between communicating entities, as defined in {{!RFC 8724}}, Section 5.3.
+
 
 
 # ESP Architecture
