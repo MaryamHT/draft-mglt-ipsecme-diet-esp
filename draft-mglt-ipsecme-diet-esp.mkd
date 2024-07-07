@@ -1,7 +1,6 @@
-OUTLINE:
+## Outline
 
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
+---
 
 abstract
 
@@ -21,15 +20,14 @@ Parameters for Static Context Header Compression and Fragmentation (SCHC) for ES
   - SCHC MAX_PACKET_SIZE
   - New SCHC Compression / Decompression Actions (CDA)
   - Fragmentation
-  - SCHC parameterization for ESP //(ESP Compression & Encrypted ESP Compression)
-
+  - SCHC parameterization for ESP (ESP Compression & Encrypted ESP Compression)
 
 Clear Text ESP Compression / Decompression
-- Integrity Checking (Checksum , Padding)
+  - Integrity Checking (Checksum, Padding)
 
-Inner Packet Payload Compression {#sec-payload}
+Inner Packet Payload Compression
 
-Inner IPv6 Compression {#sec-inner-ip6}  
+Inner IPv6 Compression
 
 IANA Considerations
 
@@ -38,16 +36,10 @@ Security Considerations
 Acknowledgements
 
 Illustrative Example
-
   - IPv6 in IPv6
+  - JSON Format
 
-  - Json Format
-
-
-
-
-
-----------------------------------------------------------------------------------------------------------
+---
 
 
 ---
