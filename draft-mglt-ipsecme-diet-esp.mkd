@@ -107,10 +107,17 @@ ESP Header Compression Profile (EHCP) defines a profile to compress communicatio
 
 This document defines a profile to compress IPsec/ESP {{!RFC4301}} / {{!RFC4303}} using SCHC (RFC 8724) represented by {{fig-esp}} traffic. The main principle is to avoid sending information that has already been shared by the peers. This profile defines three levels of compression:
 
-1. Pre-IPsec Compression (PIC), which occurs before the UDP packet or any other IP packet reaches the IPsec stack, compressing fields such as UDP ports and checksum at this stage.
-2. Clear Text ESP Compression (CTEC), which compresses fields that will later be encrypted by ESP.
-3. Encrypted ESP Compression (EEC), which compresses ESP fields that remain after encryption.
+- This level happens before the UDP packet or any other IP packet reaches the IPsec stack. At this stage, fields such as UDP ports and checksums are compressed.
+- This level compresses fields that will later be encrypted by ESP.
+- This level compresses ESP fields that remain after encryption.
+
 Note that potentially, the UDP packet could be compressed within the Clear Text ESP, but this would vary depending on whether IPsec is used in Transport mode or Tunnel mode. Thus, it is simpler to perform this compression before IPsec. Furthermore, while the current compression scope does not extend beyond the transport layer (i.e., UDP), there will eventually be a need to compress the application layer as well to cover all compression layers.
+
+This document will address only the two OSI layers:
+- Transport layer (Layer 4): This includes the compression of fields such as UDP ports and checksums before the IP packet reaches the IPsec stack (Pre-IPsec Compression).
+- Network layer (Layer 3): This includes the compression of ESP fields before and after encryption. <!-- (Clear Text ESP Compression and Encrypted ESP Compression). -->
+
+ The rest of the document will provide the architecture, rule definitions, and the order of compression and decompression processes. It will also detail the parameters required for Static Context Header Compression and Fragmentation (SCHC) for ESP headers, including SCHC context initialization, SCHC rules, RuleID, SCHC MAX_PACKET_SIZE, new SCHC Compression/Decompression Actions (CDA), and fragmentation. Additionally, this document will cover the procedures for Clear Text ESP Compression/Decompression, inner packet payload compression, and inner IPv6 compression. Lastly, the document includes considerations for IANA, security, acknowledgements, and illustrative examples in JSON format.
 
 # Terminology
 
@@ -247,14 +254,12 @@ SCHC Rules are predefined sets of instructions that specify how to compress and 
 The RuleID is a unique identifier for each SCHC rule, included in packets to ensure the receiver applies the correct decompression rule, maintaining consistency in packet processing.
 
 ##SCHC MAX_PACKET_SIZE
-SCHC MAX_PACKET_SIZE defines the largest size of a compressed ESP packet that can be handled. It ensures packets fit within network limits, optimizing transmission and avoiding unnecessary fragmentation. <htm> (how much is it)? </htm>
-
-##Integrity Checking
+This field defines the largest size of a compressed ESP packet that can be handled. It ensures packets fit within network limits, optimizing transmission and avoiding unnecessary fragmentation. Note that the SCHC MAX_PACKET_SIZE varies based on the packet because it is not specific to any particular lower-layer (LL) technology. This flexibility allows SCHC to be adapted to various network environments and constraints.
 
 ##SCHC parameterization for ESP //(ESP Compression & Encrypted ESP Compression)
 
 ##Fragmentation
-No fragmentation is applied in this profile
+Since the maximum packet size on IPsec is less than MTU of the underlying link, no fragmentation is required.
 
 The following attributes are considered by this EHC Context.
 Implementations may consider different expression of the parameters but their behavior is expected to remain compatible with this specification. 
@@ -440,53 +445,51 @@ UDP.Length = ( len( compressed UDP) + 16 + 16 + len( lsb( port_src ) ) \
 Note that for each SA, LSB and MSB are of fixed length.
 When the port has a single value this is equivalent to TV containing the port value, MO is set to "equal" and CDA set to not_sent.
   
-## Inner IPv4 Compression {#sec-inner-ip4}
+##  Inner IPv6 Compression {#sec-inner-ip6}
 
-When ts_ip_src/dst range is defined and ts_ipversion is set to "IPv4", IPv4 addresses of the inner IP packet are compressed. 
-FL is set to 32, TV to msb(ip_src) or msb(ip_dst), the MO is set  to "MSB" and the CDA is set to "LSB". 
+When ts_ip_src/dst range is defined and ts_ipversion is set to "IPv6," IPv6 addresses of the inner IP packet are compressed.
+FL is set to 128, TV to msb(ip_src) or msb(ip_dst), the MO is set to "MSB," and the CDA is set to "LSB."
 
-The IPv4 Header checksum is elided. 
-FL is set to 16, TV is omitted, MO is set to "ignore" and CDA is set to "checksum". 
+The IPv6 Hop Limit is compressed/decompressed.
+FL is set to 8 bits, TV is omitted, MO is set to "ignore," and CDA is set to "lower."
 
-The Protocol field sets FL to 8 bits. 
-If ts_proto_list contains the value 0, TV is not set, MO is set to ignore and  CDA is set to "value-sent". 
-If "proto_id" does not contain 0 and the list contains less or exactly 1 value, TV is set to that value, MO is set to "equal" and CDA is set to "mot-sent". 
-In any other case, TV is set to the proto_list, MO is set to "match-mapping" and  CDA is set to "mapping-sent". 
+The last Next Header with a transport protocol value is compressed/decompressed.
+FL is set to 8 bits. If ts_proto_list contains the value 0, TV is not set, MO is set to "ignore," and CDA is set to "value-sent."
+If "proto_id" does not contain 0 and the list contains one or fewer values, TV is set to that value, MO is set to "equal," and CDA is set to "not-sent."
+In any other case, TV is set to the proto_list, MO is set to "match-mapping," and CDA is set to "mapping-sent."
 
-The IPv4 TTL field is derived from the IPv4 TTL field of the outer IPv4 address or the IPv6 Hop limit.
-FL is set to 8 bits, TV is omitted, MO is set to ignore and CDA is set to lower. 
+The IPv6 Total Length is compressed/decompressed.
+FL is set to 16 bits, TV is not set, MO is set to "ignore," and CDA is set to "lower."
 
-The IPv4 Total Length is elided. 
-FL is set to 16 bits, TV is not set, MO is set to "ignore" and CDA is set to "lower".
-
-DSP, ECN are either retrieved from the SA or from the outer IP header. 
-Fl is set to 8.
-When the DSP, ECN are defined by the SA via {{!I-D.mglt-ipsecme-ts-dscp}} and ts_dsp_list contains a single element, TV is set to that element MO is set to "equal" and CDA is set to "not-sent".
-When the DSP, ECN are defined by the SA via {{!I-D.mglt-ipsecme-ts-dscp}} and ts_dsp_list contains more than one element, TV is set to the list, MO is set to "match-mapping" and CDA is set to "mapping-sent". 
-When the DSP, ECN are not defined by the SA, MO is set to "ignore" and the CDA is set to "lower". 
+Traffic Class is compressed/decompressed similarly to the DSP and ECN fields.
+FL is set to 8 bits. When the DSP and ECN are defined by the SA via {{!I-D.mglt-ipsecme-ts-dscp}} and ts_dsp_list contains a single element, TV is set to that element, MO is set to "equal," and CDA is set to "not-sent."
+When the DSP and ECN are defined by the SA via {{!I-D.mglt-ipsecme-ts-dscp}} and ts_dsp_list contains more than one element, TV is set to the list, MO is set to "match-mapping," and CDA is set to "mapping-sent."
+When the DSP and ECN are not defined by the SA, MO is set to "ignore," and the CDA is set to "lower."
 
 When ts_ip_version can be inferred from the ts, the IP version is elided.
-FL is set to 4 bits, the TV is set to ts_ip_version, MO is set to "equal" and CDA to "not-sent".
+FL is set to 4 bits, TV is set to ts_ip_version, MO is set to "equal," and CDA to "not-sent."
 
 When the inner IP address has the same version as the outer_ip and ts_traffic_flow is defined and set to True, the Identification field of the IPv4 inner packet or the Traffic Flow field of the IPv6 packet is elided and read from the outer IP address field.
-For IPv4, FL is set to 16 bits, TV is ignored, MO is set to "ignore" and CDA is set to "lower".
-For IPv6, FL is set to 20 bits, TV is ignored, MO is set to "ignore" and CDA is set to "lower".
+For IPv6, FL is set to 20 bits, TV is ignored, MO is set to "ignore," and CDA is set to "lower."
 
-When the inner is IPv4 and the outer IP is IPv6 and ts_traffic_flow is set to True, the LSB 16 bits of the outer IP address are considered. This results in a lossless compression. 
-When the inner is IPv6 and the outer IP is IPv4 and ts_traffic_flow is set to True, the LSB 16 bits of inner Traffic Flow fields are set to the outer Identification field and the remaining 4 MSB bits are set to 0.
+When the inner IP is IPv6 and the outer IP is IPv4 and ts_traffic_flow is set to True, the LSB 16 bits of the inner Traffic Flow fields are set to the outer Identification field and the remaining 4 MSB bits are set to 0.
 Such compression is not lossless and needs to be considered cautiously.
-Note that the Flow Label of the inner packet arriving at the destination may have another value than the initial Flow Label. However, the Flow Label value set at the source ends up with the same value at the destination, with of course a lower entropy.  
+Note that the Flow Label of the inner packet arriving at the destination may have another value than the initial Flow Label. However, the Flow Label value set at the source ends up with the same value at the destination, with, of course, a lower entropy.
 
-## Inner IPv6 Compression {#sec-inner-ip6}  
+##  Inner IPv4 Compression {#sec-inner-ip4}
+The compression/decompression of IPv4 fields are similar to IPv6, with some differences (see {{sec-inner-ip6}}).
+IPv4 addresses are compressed/decompressed similarly to IPv6 addresses except that FL is set to 32.
 
-The compression / decompression of the IPv6 fields are compressed / decompressed in a similar way as in IPv4  (see {{sec-inner-ip4}}).
-IPv6 addresses are compressed decompressed as IPv4 addresses except that FL is set to 128. 
-IPv6 Hop limit is compressed / decompressed as the IPv4 TTL field. 
-The last Next Header with a transport protocol value is compressed / decompressed as IPv4 Protocol field.
-The Total Length is compressed / decompressed similarly to the IPv4 Length except that the IPv6 length includes the IPv6 header. 
-Traffic Class is compressed / decompressed similarly to the DSP,ECN field.
-IP version is compressed / decompressed as in IPv4.
-The Traffic Flow field is compressed / decompressed similarly to the IPv4 Identification field except that FL is set to 20 bits.
+The IPv4 Header checksum is elided.
+FL is set to 16, TV is omitted, MO is set to "ignore," and CDA is set to "checksum."
+
+The IPv4 TTL field is derived from the IPv4 TTL field of the outer IPv4 address or the IPv6 Hop Limit.
+FL is set to 8 bits, TV is omitted, MO is set to "ignore," and CDA is set to "lower."
+
+The IPv4 Total Length is elided.
+FL is set to 16 bits, TV is not set, MO is set to "ignore," and CDA is set to "lower."
+
+
 
 ## ESP Compression
 
@@ -852,150 +855,6 @@ P|     Padding (continue)        |  Pad Length   | Next Header   |V V
 {: #fig-comp-vpn-tunnel-66 artwork-align="center" title="Compressed IPv6 in IPv6 ESP packet for VPN traffic mode with AES-GCM_16" }
 
 
-###  IPv6 in IPv4
-
-For IPv6 in IPv4, the compression is similar when ts_traffic_flow is set, otherwise these 20 bits needs to be provided explicitly. 
-
-When ts_traffic_flow is set to True, the resulting decompressed IPv6 packet will be as follows (see the flow label field):
-
-~~~
-  0                   1                   2                   3
-  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
--+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-I|version| traffic class |0 0 0 0        flow label              |
-P+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-v|         payload length        |  next header  |   hop limit   |
-6+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- |                                                               |
- |                      inner source IP                          |
- |                                                               |
- |                                                               |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- |                                                               |
- |                    inner destination IP                       |
- |                                                               |
- |                                                               |
--+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-T|          source port          |           dest port           |
-C+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-P|                      Sequence Number (SN)                     |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- |                     ACK Sequence Number                       |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- |Off. | Rserv |      Flags      |         Window Size           |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- |             Checksum          |      Urgent Pointer           |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- |                                                               |
- ~                        APPLICATION DATA                       ~
- |                                                               |
- |                                               +-+-+-+-+-+-+-+-+
- |                                               | 
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-~~~
-{: #fig-resulting-ip6 artwork-align="center" title="Decompressed IPv6 encapsulated in IPv4 ESP packet" }
-
-
-###  IPv4 in IPv4
-
-{{fig-std-vpn-tunnel-44}} represents the original ESP TCP packet with IPv6 inner IP addresses and {{fig-comp-vpn-tunnel-44}} represents the corresponding packet compressed with EHC.
-  
-The compression with Diet-ESP results in a reduction of 24 bytes.
-
-
-~~~
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
--+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+---
-E|               Security Parameters Index (SPI)                 |  ^
-S+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-P|                      Sequence Number (SN)                     |  |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
- |                                                               |  |
- |                             IV                                |  |
--+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- |
-I|Version|  IHL  |Type of Service|          Total Length         |^ |
-P+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| |
-v|         Identification        |Flags|      Fragment Offset    || a
-4+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| u
- |  Time to Live |    Protocol   |         Header Checksum       |e t
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+n h
- |                       Source Address                          |c e
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+r n
- |                    Destination Address                        |y t
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+p i
- |                    Options                    |    Padding    |t c
--+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+e a
-T|          source port          |           dest port           |d t
-C+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| e
-P|                      Sequence Number (SN)                     || d
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| |
- |                     ACK Sequence Number                       || |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| |
- |Off. | Rserv |      Flags      |         Window Size           || |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| |
- |             Checksum          |      Urgent Pointer           || |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| |
- |                                                               || |
- ~                        APPLICATION DATA                       ~| |
- |                                                               || |
--|                                               +-+-+-+-+-+-+-+-+| |
-E|                                               |    Padding    || |
-S+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| |
-P|     Padding (continue)        |  Pad Length   | Next Header   |V V
--+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+---
- |                                                               |
- |                                                               |
- |         Integrity Check Value-ICV   (variable)                |
- |                                                               |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-~~~
-{: #fig-std-vpn-tunnel-44 artwork-align="center" title="Standard IPv4 in IPv4 ESP packet for VPN traffic mode with AES-GCM_16" }
-
-
-~~~
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+---
-|             SPI               |              SN               |  ^
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|                                                               |  |
-|                             IV                                |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--|
-|    Protocol   |     inner destination IP                      ~^ |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|| |
-~  (continue)   |            source port        |  destination  ~| |a
-|-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| |u
-|     port      |         TCP Sequence Number (SN)              ~|e|t
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+|n|h
-~  (continue)   |     ACK Sequence Number                       ~|c|e
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+|r|n
-~  (continue)   |Off. | Rserv |      Flags      |   Window       ~y|t
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+|p|i
-|         Size  |        Urgent Pointer         |               ||t|c
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               ||e|a
-|                                                               ||d|t
-|                        APPLICATION DATA                       || |e
-~                                                               || |d
-|                             +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+| |
-|                             |    Padding    |                 |v v
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                 |
-|                                                               |
-|                                                               |
-|       Integrity Check Value-ICV  (variable) +-+-+-+-+-+-+-+-+-+ 
-|                                             |                 
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-~~~
-{: #fig-comp-vpn-tunnel-44 artwork-align="center" title="Compressed IPv4 in IPv4 ESP packet for VPN traffic mode with AES-GCM_16" }
-
-
-###  IPv4 in IPv6
-
-TBD
-
-
-
-
 
 # SCHC Context
 
@@ -1034,7 +893,10 @@ Alignment: Ensures that the length of the compressed data plus padding aligns co
 Padding and Pad Length: Handled dynamically based on alignment and the length of the payload data.
 
 ## JSON Format Context
-"SCHC_Context": {
+
+```json
+{
+  "SCHC_Context": {
     "Rules": [
       {
         "RuleID": 1,
@@ -1194,6 +1056,8 @@ Padding and Pad Length: Handled dynamically based on alignment and the length of
       }
     ]
   }
+}
+
 
 
 
