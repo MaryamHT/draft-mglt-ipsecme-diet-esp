@@ -128,7 +128,7 @@ __Security Parameters Index (SPI):__ As defined in {{!RFC 4301}}, Section 4.1.
 
 __Sequence Number (SN):__ As defined in {{!RFC 4303}}, Section 2.2.
 
-__Integrity Check Value (ICV):__ As defined in [RFC 4303](https://datatracker.ietf.org/doc/html/rfc4303){{!RFC 4303}}, Section 2.7.
+__Integrity Check Value (ICV):__ As defined in [RFC 4303](https://datatracker.ietf.org/doc/html/rfc4303), [Section 2.8](https://datatracker.ietf.org/doc/html/rfc4303#section-2.7:~:text=for%20the%20feature.-,2.8,-.%20%20Integrity%20Check%20Value).
 
 __Static Context Header Compression (SCHC):__ A framework for header compression designed for LPWANs, as defined in {{!RFC 8724}}.
 
