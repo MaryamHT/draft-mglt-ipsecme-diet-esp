@@ -548,7 +548,7 @@ The IPv6 Next Header field or the IPv4 Protocol that contains the "ESP" value is
   
 # SCHC Compression for IPsec in Transport mode
 
-The transport mode mostly differ from the Tunnel mode in that the IP header of the packet is not encrypted. As a result, the IP Payload is compressed as described in {{}sec-payload}}. The IP header is not compressed. The byte alignment of the Compressed Payload is performed as described in {{sec-byte-align}}. The Clear Text ESP Compression is performed as described in {{sec-cetc}} except for the Next Header Field which is compressed as described in {{sec-inner-ip6}}
+The transport mode mostly differ from the Tunnel mode in that the IP header of the packet is not encrypted. As a result, the IP Payload is compressed as described in {{sec-payload}}. The IP header is not compressed. The byte alignment of the Compressed Payload is performed as described in {{sec-byte-align}}. The Clear Text ESP Compression is performed as described in {{sec-cetc}} except for the Next Header Field which is compressed as described in {{sec-inner-ip6}}
 
 # IANA Considerations
 
