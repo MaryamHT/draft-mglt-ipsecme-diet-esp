@@ -77,14 +77,15 @@ Diet-ESP assumes the Traffic Selectors of the Security Association (SA) can be e
 
 # Introduction
 
-Encapsulating Security Payload (ESP) {{!RFC4303}} protocol is part of the IPsec{{!RFC4301}} suite protocols and provides confidentiality, data origin authentication, integrity, anti-replay, and traffic flow confidentiality. The set of services ESP provides depends on the Security Association (SA) parameters negotiated between devices.
-
-An ESP packet is composed of an ESP Header, an ESP Payload and an Integrity Check Value (ICV). and ESP Trailer. The ESP Payload is encrypted and its corresponding clear text includes ESP Data and an ESP Trailer. The ESP Data contains either the original IP payload or, in tunnel mode, the full encapsulated IP packet. The ESP Trailer, placed at the end of the ESP Payload, includes fields such as Padding, Pad Length to ensure proper alignment and Next Header to indicate the protocol following the ESP Header. The ICV is calculated over the ESP Header, the ESP Payload, and trailer to maintain packet integrity. To better understand ESP, the reader might be interested in reading Minimal ESP {{?RFC9333}}, a simplified version of ESP.
+The Encapsulating Security Payload (ESP) {{!RFC4303}} protocol is part of the IPsec {{RFC!4301}} suite of protocols and can provide confidentiality, data origin authentication, integrity, anti-replay, and traffic flow confidentiality. The set of services ESP provides depends on the parameters of the Security Association (SA) negotiated between devices.
  
-
-While ESP is effective in securing traffic, further optimization can reduce packet sizes, enhancing performance in networks with limited bandwidth. In such environments, reducing the size of transmitted packets is essential to improve efficiency. This document defines the ESP Header Compression Profile (EHCP) Diet-ESP for compression/decompression (C/D) ESP packets as represented in {{fig-esp}}, using Static Context Header Compression (SCHC) {{!RFC8724}}. Compression with SCHC is based on using a set of Rules (SoR), which constitutes the Context of SCHC C/D. Since we are using IPsec, this Context can be agreed via IKEv2 {{!RFC7296}} and its specific extension {{!I-D.mglt-ipsecme-ikev2-diet-esp-extension}}. 
-
-As a result, any information that can be generated from the received compressed packet and the SCHC Context is not sent on the wire,  thus reducing the ESP packet size on the wire. 
+Key components of an ESP packet include the ESP Header, the ESP Payload, the ESP Trailer, and the Integrity Check Value (ICV). ESP has two modes: Tunnel and Transport. Tunnel mode is commonly used for VPNs, with the ESP Header placed after an outer IP header and before the inner IP packet headers of the original datagram. This ensures both the original IP headers and payload are protected. In Transport mode, the Payload consists of the IP payload and the ESP header is inserted after the original IP packet header. In this way, the ESP Payload contains either the original IP payload or the fully encapsulated IP packet in transport mode or tunnel mode, respectively.
+ 
+The ESP Trailer, placed at the end of the encrypted payload, includes fields such as Padding and Pad Length to ensure proper alignment, and Next Header to indicate the protocol following the ESP header. The ICV, calculated over the ESP Header, ESP Payload, and ESP Trailer, is appended after the ESP Trailer to maintain packet integrity. For a simplified overview of ESP, readers may refer to Minimal ESP {{!RFC9333}}.
+ 
+While ESP is effective in securing traffic, further optimization can reduce packet sizes, enhancing performance in networks with limited bandwidth. In such environments, reducing the size of transmitted packets is essential to improve efficiency. This document defines the ESP Header Compression Profile (EHCP), namely Diet-ESP, for compression/decompression (C/D) of IPsec/ESP {{!RFC4301}} / {{!RFC4303}} packets using the Static Context Header Compression and Fragmentation (SCHC) framework {{!RFC8724}}. The structure of Diet-ESP is shown in {{fig-esp}}. Compression with SCHC is based on the use of a Set of Rules (SoR) used in a SCHC instance for C/D operations {{!draft-ietf-schc-architecture-02}}. One or more SoR constitute the SCHC Context. In the case of IPsec, the Context can be agreed via IKEv2 {{!RFC7296}} and its specific extension {{!I-D.mglt-ipsecme-ikev2-diet-esp-extension}}.
+ 
+As a result of the application of the same SoR, header values shared by the endpoints do not need to be sent on the wire. At the receiver, header information is re-generated from the received compressed packet, and the application of the proper SoR is retrieved from the Context.
 
 ~~~
  0                   1                   2                   3
@@ -112,11 +113,11 @@ As a result, any information that can be generated from the received compressed 
     
 This document defines the ESP Header Compression profile (EHCP) Architecture with the application of SCHC at various layers of the IPsec stack -- also called SCHC strata -- as defined below:
 
-1. Inner IP Compression (IIPC): The SoR used in this SCHC stratum apply directly to the headers of the inner IP packet. For example, in the case of a UDP packet with ports determined by the SA, fields such as UDP ports and checksums are typically compressed. If no compression of the inner packet is possible, the resulting SCHC packet contains the uncompressed IP packet, as per {{!RFC8724, Section 7.2}}.
+1. Inner IP Compression (IIPC): The SoR used in this SCHC stratum applies directly to the headers of the inner IP packet. For example, in the case of a UDP packet with ports determined by the SA, fields such as UDP ports and checksums are typically compressed. If no compression of the inner packet is possible, the resulting SCHC packet contains the uncompressed IP packet, as per {{!RFC8724, Section 7.2}}.
 
-2. Clear Text ESP Compression (CTEC): This SCHC stratum contains SoR that compress the fields of the ESP Payload, right before being encrypted, as the encapsulated traffic in tunnel mode. 
+2. Clear Text ESP Compression (CTEC): This SCHC stratum contains SoR that compresses the fields of the ESP Payload, right before being encrypted, as the encapsulated traffic in tunnel mode. 
 
-3. Encrypted ESP Compression (EEC): This SCHC stratum contains SoR that compress the ESP fields that remain visible after encryption, that is, the ESP Header.
+3. Encrypted ESP Compression (EEC): This SCHC stratum contains the SoR that compresses the ESP fields that remain visible after encryption, that is, the ESP Header.
 
 Note that the descriptions of the three SCHC strata provided in this document meet the general purpose of ESP. It is possible that in some deployments, the SCHC instances from different SCHC layers can be merged. Typically, a specific implementation may merge the compression of IIPC and CTEC layers.
 
